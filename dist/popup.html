@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Google Sign-In Extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <h1>My Google Sign-In Extension</h1>
+    <div id="user-info" style="display: none;">
+      <p>Welcome, <span id="user-name"></span>!</p>
+      <p>Email: <span id="user-email"></span></p>
+      <p>Last Login: <span id="last-login"></span></p>
+      <button id="logout-button">Logout</button>
+    </div>
+    <div id="login-container">
+      <button id="login-button">Sign in with Google</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

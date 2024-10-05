@@ -1,0 +1,32 @@
+{
+    "manifest_version": 3,
+    "name": "My Google Sign-In Extension",
+    "version": "1.0.0",
+    "description": "A Chrome extension with Google Sign-In and Firestore storage",
+    "permissions": [
+      "identity",
+      "storage",
+      "offscreen"
+    ],
+    "host_permissions": [
+      "https://*.firebaseapp.com/",
+      "https://*.googleapis.com/"
+    ],
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "background": {
+      "service_worker": "background.js",
+      "type": "module"
+    },
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'"
+    },
+    "oauth2": {
+      "client_id": "72934072778-b5kt0bulne8cer77pqsm2uigp35e5sb9.apps.googleusercontent.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
+      ]
+    }
+  }
