@@ -1,23 +1,19 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuth, signInWithCredential, GoogleAuthProvider, signOut } from 'firebase/auth';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBQ8g_x1Sa9fQM28sKmdljsXxhY3EqGbK0",
-    authDomain: "webpack-extension.firebaseapp.com",
-    projectId: "webpack-extension",
-    storageBucket: "webpack-extension.appspot.com",
-    messagingSenderId: "72934072778",
-    appId: "1:72934072778:web:796b73448f2b73806e2f33"
-  };
+  apiKey: "AIzaSyBQ8g_x1Sa9fQM28sKmdljsXxhY3EqGbK0",
+  authDomain: "webpack-extension.firebaseapp.com",
+  projectId: "webpack-extension",
+  storageBucket: "webpack-extension.appspot.com",
+  messagingSenderId: "72934072778",
+  appId: "1:72934072778:web:796b73448f2b73806e2f33"
+};
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('Extension installed');
-});
+const BACKEND_URL = 'http://localhost:3000'; 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'signIn') {
@@ -36,11 +32,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
   } else if (message.action === 'getAuthState') {
     sendAuthState();
+  } else if (message.action === 'initiateSubscription') {
+    initiateSubscription(message.plan);
+  } else if (message.action === 'checkSubscription') {
+    checkSubscription(message.uid);
+  }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url.includes('payment=success')) {
+    chrome.tabs.remove(tabId);
+    checkSubscription(auth.currentUser.uid);
   }
 });
 
 function signIn() {
-  chrome.identity.getAuthToken({ interactive: true, account: null }, function(token) {
+  chrome.identity.getAuthToken({ interactive: true }, function(token) {
     if (chrome.runtime.lastError) {
       console.error('getAuthToken error:', chrome.runtime.lastError);
       chrome.runtime.sendMessage({ action: 'signInResult', success: false, error: chrome.runtime.lastError.message });
@@ -51,7 +58,16 @@ function signIn() {
     signInWithCredential(auth, credential)
       .then((result) => {
         const user = result.user;
-        storeUserData(user, token);
+        chrome.runtime.sendMessage({ 
+          action: 'signInResult', 
+          success: true, 
+          user: {
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL
+          }
+        });
       })
       .catch((error) => {
         console.error('signInWithCredential error:', error);
@@ -60,74 +76,63 @@ function signIn() {
   });
 }
 
-async function storeUserData(user, token) {
-  const userRef = doc(db, 'users', user.uid);
-  const userData = {
-    displayName: user.displayName,
-    email: user.email,
-    photoURL: user.photoURL,
-    lastLogin: serverTimestamp(),
-    token: token
-  };
-
-  try {
-    await setDoc(userRef, userData, { merge: true });
-    const userDoc = await getDoc(userRef);
-    const storedUserData = userDoc.data();
+function sendAuthState() {
+  const user = auth.currentUser;
+  if (user) {
     chrome.runtime.sendMessage({ 
       action: 'signInResult', 
       success: true, 
       user: {
-        displayName: storedUserData.displayName,
-        email: storedUserData.email,
-        photoURL: storedUserData.photoURL,
-        lastLogin: storedUserData.lastLogin.toDate().toISOString()
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL
       }
     });
-  } catch (error) {
-    console.error('Error storing user data:', error);
-    chrome.runtime.sendMessage({ action: 'signInResult', success: false, error: error.message });
-  }
-}
-
-function sendAuthState() {
-  const user = auth.currentUser;
-  if (user) {
-    getUserData(user.uid);
   } else {
     chrome.runtime.sendMessage({ action: 'signOutResult', success: true });
   }
 }
 
-async function getUserData(uid) {
+async function initiateSubscription(plan) {
+  const user = auth.currentUser;
+  if (!user) {
+    chrome.runtime.sendMessage({ action: 'subscriptionError', error: 'User not signed in' });
+    return;
+  }
+
   try {
-    const userRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userRef);
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      chrome.runtime.sendMessage({ 
-        action: 'signInResult', 
-        success: true, 
-        user: {
-          displayName: userData.displayName,
-          email: userData.email,
-          photoURL: userData.photoURL,
-          lastLogin: userData.lastLogin.toDate().toISOString()
-        }
-      });
+    const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: user.uid,
+        plan: plan,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.sessionUrl) {
+      chrome.tabs.create({ url: data.sessionUrl });
     } else {
-      chrome.runtime.sendMessage({ action: 'signOutResult', success: true });
+      throw new Error('Failed to create checkout session');
     }
   } catch (error) {
-    console.error('Error getting user data:', error);
-    chrome.runtime.sendMessage({ action: 'signInResult', success: false, error: error.message });
+    console.error('Subscription initiation error:', error);
+    chrome.runtime.sendMessage({ action: 'subscriptionError', error: error.message });
   }
 }
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    console.log('User is signed in');
-  } else {
-    console.log('User is signed out');
+async function checkSubscription(uid) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/check-subscription/${uid}`);
+    const data = await response.json();
+    chrome.runtime.sendMessage({ action: 'subscriptionStatus', status: data.subscription });
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    chrome.runtime.sendMessage({ action: 'subscriptionStatus', status: null });
   }
-});
+}

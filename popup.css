@@ -1,40 +1,35 @@
 body {
-    width: 300px;
-    padding: 15px;
-    font-family: Arial, sans-serif;
-  }
-  
-  h1 {
-    font-size: 18px;
-    margin-bottom: 15px;
-  }
-  
-  button {
-    margin-top: 10px;
-    padding: 8px 12px;
-    cursor: pointer;
-    background-color: #4285F4;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-  
-  button:hover {
-    background-color: #3367D6;
-  }
-  
-  #user-info {
-    margin-top: 15px;
-  }
-  
-  #user-avatar {
-    display: block;
-    margin: 0 auto 10px;
-  }
-  
-  #status-message {
-    margin-top: 10px;
-    font-style: italic;
-    color: #666;
-  }
+  font-family: Arial, sans-serif;
+  width: 300px;
+  padding: 10px;
+}
+
+h1 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+button {
+  margin-top: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+#user-info {
+  margin-top: 10px;
+}
+
+#subscription-options {
+  margin-top: 10px;
+}
+
+#subscription-options button {
+  display: block;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+#status-message {
+  margin-top: 10px;
+  font-style: italic;
+}
