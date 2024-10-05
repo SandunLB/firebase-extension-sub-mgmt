@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Google Sign-In Extension</title>
+  <title>Enhanced Google Sign-In Extension</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div id="app">
-    <h1>My Google Sign-In Extension</h1>
+    <h1>Enhanced Google Sign-In</h1>
     <div id="user-info" style="display: none;">
+      <img id="user-avatar" src="" alt="User Avatar" style="width: 50px; height: 50px; border-radius: 50%;">
       <p>Welcome, <span id="user-name"></span>!</p>
       <p>Email: <span id="user-email"></span></p>
       <p>Last Login: <span id="last-login"></span></p>
@@ -18,6 +19,7 @@
     <div id="login-container">
       <button id="login-button">Sign in with Google</button>
     </div>
+    <div id="status-message"></div>
   </div>
   <script src="popup.js"></script>
 </body>

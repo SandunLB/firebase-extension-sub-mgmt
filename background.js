@@ -25,9 +25,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === 'signOut') {
     signOut(auth)
       .then(() => {
+        chrome.identity.clearAllCachedAuthTokens(() => {
+          console.log('Cleared all cached auth tokens');
+        });
         chrome.runtime.sendMessage({ action: 'signOutResult', success: true });
       })
       .catch((error) => {
+        console.error('Sign-out error:', error);
         chrome.runtime.sendMessage({ action: 'signOutResult', success: false, error: error.message });
       });
   } else if (message.action === 'getAuthState') {
@@ -36,9 +40,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function signIn() {
-  chrome.identity.getAuthToken({ interactive: true }, function(token) {
+  chrome.identity.getAuthToken({ interactive: true, account: null }, function(token) {
     if (chrome.runtime.lastError) {
-      chrome.runtime.sendMessage({ action: 'signInResult', success: false, error: chrome.runtime.lastError });
+      console.error('getAuthToken error:', chrome.runtime.lastError);
+      chrome.runtime.sendMessage({ action: 'signInResult', success: false, error: chrome.runtime.lastError.message });
       return;
     }
 
@@ -49,6 +54,7 @@ function signIn() {
         storeUserData(user, token);
       })
       .catch((error) => {
+        console.error('signInWithCredential error:', error);
         chrome.runtime.sendMessage({ action: 'signInResult', success: false, error: error.message });
       });
   });

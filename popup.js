@@ -6,12 +6,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const userName = document.getElementById('user-name');
     const userEmail = document.getElementById('user-email');
     const lastLogin = document.getElementById('last-login');
+    const userAvatar = document.getElementById('user-avatar');
+    const statusMessage = document.getElementById('status-message');
   
     loginButton.addEventListener('click', () => {
+      statusMessage.textContent = 'Signing in...';
       chrome.runtime.sendMessage({ action: 'signIn' });
     });
   
     logoutButton.addEventListener('click', () => {
+      statusMessage.textContent = 'Signing out...';
       chrome.runtime.sendMessage({ action: 'signOut' });
     });
   
@@ -19,14 +23,18 @@ document.addEventListener('DOMContentLoaded', function() {
       if (message.action === 'signInResult') {
         if (message.success) {
           updateUserInfo(message.user);
+          statusMessage.textContent = 'Signed in successfully!';
         } else {
           console.error('Sign-in error:', message.error);
+          statusMessage.textContent = 'Sign-in failed. Please try again.';
         }
       } else if (message.action === 'signOutResult') {
         if (message.success) {
           updateUserInfo(null);
+          statusMessage.textContent = 'Signed out successfully!';
         } else {
           console.error('Sign-out error:', message.error);
+          statusMessage.textContent = 'Sign-out failed. Please try again.';
         }
       }
     });
@@ -36,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         userName.textContent = user.displayName;
         userEmail.textContent = user.email;
         lastLogin.textContent = user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A';
+        userAvatar.src = user.photoURL || 'default-avatar.png';
         userInfo.style.display = 'block';
         loginContainer.style.display = 'none';
       } else {
