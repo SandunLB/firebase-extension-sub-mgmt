@@ -1,35 +1,48 @@
 body {
   font-family: Arial, sans-serif;
   width: 300px;
-  padding: 10px;
+  padding: 20px;
 }
 
 h1 {
   font-size: 18px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 button {
-  margin-top: 10px;
-  padding: 5px 10px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px 0;
   cursor: pointer;
+  border-radius: 4px;
+}
+
+button:hover {
+  background-color: #357ae8;
 }
 
 #user-info {
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 #subscription-options {
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 #subscription-options button {
   display: block;
   width: 100%;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 #status-message {
-  margin-top: 10px;
-  font-style: italic;
+  margin-top: 15px;
+  color: #d32f2f;
+}
+
+#lifetime-message {
+  color: #388e3c;
+  font-weight: bold;
 }

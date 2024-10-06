@@ -14,12 +14,14 @@
       <p>Welcome, <span id="user-name"></span>!</p>
       <p>Email: <span id="user-email"></span></p>
       <p>Subscription Status: <span id="subscription-status">Checking...</span></p>
-      <div id="subscription-options">
+      <div id="subscription-options" style="display: none;">
         <h2>Choose a Subscription Plan</h2>
         <button id="monthly-plan">Monthly Plan ($9.99/month)</button>
         <button id="yearly-plan">Yearly Plan ($99.99/year)</button>
         <button id="lifetime-plan">Lifetime Plan ($299.99)</button>
       </div>
+      <button id="manage-subscription" style="display: none;">Manage Subscription</button>
+      <p id="lifetime-message" style="display: none;">You have a lifetime subscription. Enjoy unlimited access!</p>
       <button id="logout-button">Logout</button>
     </div>
     <div id="login-container">

@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const statusMessage = document.getElementById('status-message');
   const subscriptionStatus = document.getElementById('subscription-status');
   const subscriptionOptions = document.getElementById('subscription-options');
+  const manageSubscription = document.getElementById('manage-subscription');
+  const lifetimeMessage = document.getElementById('lifetime-message');
   const monthlyPlan = document.getElementById('monthly-plan');
   const yearlyPlan = document.getElementById('yearly-plan');
   const lifetimePlan = document.getElementById('lifetime-plan');
@@ -24,6 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
   monthlyPlan.addEventListener('click', () => initiateSubscription('monthly'));
   yearlyPlan.addEventListener('click', () => initiateSubscription('yearly'));
   lifetimePlan.addEventListener('click', () => initiateSubscription('lifetime'));
+
+  manageSubscription.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'openCustomerPortal' });
+  });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'signInResult') {
@@ -41,6 +47,8 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } else if (message.action === 'subscriptionStatus') {
       updateSubscriptionStatus(message.status);
+    } else if (message.action === 'subscriptionExpired') {
+      statusMessage.textContent = 'Your subscription has expired. Please renew to continue access.';
     }
   });
 
@@ -55,12 +63,40 @@ document.addEventListener('DOMContentLoaded', function() {
       userInfo.style.display = 'none';
       loginContainer.style.display = 'block';
       subscriptionStatus.textContent = 'Checking...';
+      manageSubscription.style.display = 'none';
+      lifetimeMessage.style.display = 'none';
     }
   }
 
   function updateSubscriptionStatus(status) {
-    subscriptionStatus.textContent = status ? `Active (${status.plan})` : 'Inactive';
-    subscriptionOptions.style.display = status ? 'none' : 'block';
+    if (status) {
+      subscriptionStatus.textContent = `${status.status} (${status.plan})`;
+      if (status.status === 'active' || status.status === 'active_canceling') {
+        subscriptionOptions.style.display = 'none';
+        manageSubscription.style.display = 'block';
+        lifetimeMessage.style.display = 'none';
+        
+        if (status.plan === 'lifetime') {
+          manageSubscription.style.display = 'none';
+          lifetimeMessage.style.display = 'block';
+        }
+      } else if (status.status === 'expired') {
+        subscriptionStatus.textContent = 'Expired';
+        subscriptionOptions.style.display = 'block';
+        manageSubscription.style.display = 'none';
+        lifetimeMessage.style.display = 'none';
+      } else {
+        // For any other status (e.g., 'trial', 'pending', etc.)
+        subscriptionOptions.style.display = 'block';
+        manageSubscription.style.display = 'none';
+        lifetimeMessage.style.display = 'none';
+      }
+    } else {
+      subscriptionStatus.textContent = 'No active subscription';
+      subscriptionOptions.style.display = 'block';
+      manageSubscription.style.display = 'none';
+      lifetimeMessage.style.display = 'none';
+    }
   }
 
   function initiateSubscription(plan) {
