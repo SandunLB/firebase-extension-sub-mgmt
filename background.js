@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCredential, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBQ8g_x1Sa9fQM28sKmdljsXxhY3EqGbK0",
@@ -39,10 +38,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     initiateSubscription(message.plan);
   } else if (message.action === 'checkSubscription') {
     checkSubscription(message.uid);
-  } else if (message.action === 'openCustomerPortal') {
+  } else if (message.action === 'openCustomerPortal')
     openCustomerPortal();
   }
-});
+);
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url && tab.url.includes('payment=success')) {
@@ -94,10 +93,9 @@ async function storeUserData(user, token) {
   const userDoc = await getDoc(userRef);
 
   if (!userDoc.exists()) {
-    // New user, add trial period and generate unique ID
+    // New user, add trial period
     const trialEnd = new Date();
     trialEnd.setHours(trialEnd.getHours() + 24);
-    const uniqueUserId = uuidv4(); // Generate a unique ID
 
     await setDoc(userRef, {
       displayName: user.displayName,
@@ -109,8 +107,7 @@ async function storeUserData(user, token) {
         status: 'trial',
         plan: 'trial',
         endDate: trialEnd
-      },
-      uniqueUserId: uniqueUserId // Store the unique ID
+      }
     });
   } else {
     // Existing user, update last login
@@ -138,7 +135,7 @@ function sendAuthState() {
   }
 }
 
-async function initiateSubscription(plan, retries = 3) {
+async function initiateSubscription(plan) {
   const user = auth.currentUser;
   if (!user) {
     chrome.runtime.sendMessage({ action: 'subscriptionError', error: 'User not signed in' });
@@ -146,26 +143,13 @@ async function initiateSubscription(plan, retries = 3) {
   }
 
   try {
-    const userRef = doc(db, 'users', user.uid);
-    const userDoc = await getDoc(userRef);
-    let userData = userDoc.data();
-
-    if (!userData || !userData.uniqueUserId) {
-      if (retries > 0) {
-        console.log(`User data or unique ID not found. Retrying in 2 seconds. Retries left: ${retries - 1}`);
-        setTimeout(() => initiateSubscription(plan, retries - 1), 2000);
-        return;
-      }
-      throw new Error('User data or unique ID not found after retries');
-    }
-
     const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        uniqueUserId: userData.uniqueUserId,
+        email: user.email,
         plan: plan,
       }),
     });
@@ -189,11 +173,11 @@ async function checkSubscription(uid) {
     const userDoc = await getDoc(userRef);
     const userData = userDoc.data();
 
-    if (!userData || !userData.uniqueUserId) {
-      throw new Error('User data or unique ID not found');
+    if (!userData || !userData.email) {
+      throw new Error('User data or email not found');
     }
 
-    const response = await fetch(`${BACKEND_URL}/check-subscription/${userData.uniqueUserId}`);
+    const response = await fetch(`${BACKEND_URL}/check-subscription/${userData.email}`);
     const data = await response.json();
     chrome.runtime.sendMessage({ action: 'subscriptionStatus', status: data });
   } catch (error) {
@@ -210,21 +194,13 @@ async function openCustomerPortal() {
   }
 
   try {
-    const userRef = doc(db, 'users', user.uid);
-    const userDoc = await getDoc(userRef);
-    const userData = userDoc.data();
-
-    if (!userData || !userData.uniqueUserId) {
-      throw new Error('User data or unique ID not found');
-    }
-
     const response = await fetch(`${BACKEND_URL}/create-customer-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        uniqueUserId: userData.uniqueUserId,
+        email: user.email,
       }),
     });
 
