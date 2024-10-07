@@ -27,7 +27,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 app.post('/create-checkout-session', async (req, res) => {
-  const { uniqueUserId, plan } = req.body;
+  const { email, plan } = req.body;
 
   const prices = {
     monthly: 'price_1Q6WBLEUAhHysq2jITe3wtgX',
@@ -47,9 +47,9 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: plan === 'lifetime' ? 'payment' : 'subscription',
       success_url: `${process.env.SERVER_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.EXTENSION_URL}`,
-      client_reference_id: uniqueUserId,
+      client_reference_id: email,
       metadata: {
-        uniqueUserId,
+        email,
         plan,
       },
     });
@@ -109,9 +109,9 @@ app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) =
   res.json({received: true});
 });
 
-app.get('/check-subscription/:uniqueUserId', async (req, res) => {
+app.get('/check-subscription/:email', async (req, res) => {
   try {
-    const status = await checkSubscriptionStatus(req.params.uniqueUserId);
+    const status = await checkSubscriptionStatus(req.params.email);
     res.json(status);
   } catch (error) {
     console.error('Error checking subscription status:', error);
@@ -120,11 +120,11 @@ app.get('/check-subscription/:uniqueUserId', async (req, res) => {
 });
 
 app.post('/create-customer-portal-session', async (req, res) => {
-  const { uniqueUserId } = req.body;
+  const { email } = req.body;
 
   try {
     const usersRef = db.collection('users');
-    const snapshot = await usersRef.where('uniqueUserId', '==', uniqueUserId).get();
+    const snapshot = await usersRef.where('email', '==', email).get();
 
     if (snapshot.empty) {
       return res.status(400).json({ error: 'User not found' });
@@ -149,17 +149,17 @@ app.post('/create-customer-portal-session', async (req, res) => {
 });
 
 async function handleSuccessfulPayment(session) {
-  const uniqueUserId = session.client_reference_id;
-  if (!uniqueUserId) {
-    console.error('No uniqueUserId found in session metadata');
+  const email = session.client_reference_id;
+  if (!email) {
+    console.error('No email found in session metadata');
     return;
   }
 
   const usersRef = db.collection('users');
-  const snapshot = await usersRef.where('uniqueUserId', '==', uniqueUserId).get();
+  const snapshot = await usersRef.where('email', '==', email).get();
 
   if (snapshot.empty) {
-    console.error('No user found with the given unique ID');
+    console.error('No user found with the given email');
     return;
   }
 
@@ -176,9 +176,9 @@ async function handleSuccessfulPayment(session) {
         stripeDefaultPaymentMethod: customer.invoice_settings?.default_payment_method,
       };
       
-      // Update customer metadata with uniqueUserId
+      // Update customer metadata with email
       await stripe.customers.update(session.customer, {
-        metadata: { uniqueUserId: uniqueUserId }
+        metadata: { email: email }
       });
     } catch (error) {
       console.error('Error retrieving or updating customer data:', error);
@@ -200,9 +200,9 @@ async function handleSuccessfulPayment(session) {
     if (session.subscription) {
       try {
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
-        // Attach uniqueUserId to subscription metadata
+        // Attach email to subscription metadata
         await stripe.subscriptions.update(subscription.id, {
-          metadata: { uniqueUserId: uniqueUserId }
+          metadata: { email: email }
         });
         subscriptionData = {
           status: 'active',
@@ -228,24 +228,24 @@ async function handleSuccessfulPayment(session) {
 }
 
 async function handleSubscriptionUpdate(subscription) {
-  let uniqueUserId = subscription.metadata?.uniqueUserId;
+  let email = subscription.metadata?.email;
   
-  if (!uniqueUserId) {
+  if (!email) {
     try {
       const customer = await stripe.customers.retrieve(subscription.customer);
-      uniqueUserId = customer.metadata?.uniqueUserId;
+      email = customer.metadata?.email;
       
-      if (!uniqueUserId) {
+      if (!email) {
         const usersRef = db.collection('users');
         const snapshot = await usersRef.where('stripeCustomerId', '==', subscription.customer).get();
         
         if (!snapshot.empty) {
-          uniqueUserId = snapshot.docs[0].data().uniqueUserId;
+          email = snapshot.docs[0].data().email;
           await stripe.customers.update(subscription.customer, {
-            metadata: { uniqueUserId: uniqueUserId }
+            metadata: { email: email }
           });
           await stripe.subscriptions.update(subscription.id, {
-            metadata: { uniqueUserId: uniqueUserId }
+            metadata: { email: email }
           });
         } else {
           console.error('No user found with the given Stripe customer ID');
@@ -258,16 +258,16 @@ async function handleSubscriptionUpdate(subscription) {
     }
   }
 
-  if (!uniqueUserId) {
-    console.error('No uniqueUserId found in subscription or customer metadata');
+  if (!email) {
+    console.error('No email found in subscription or customer metadata');
     return;
   }
 
   const usersRef = db.collection('users');
-  const snapshot = await usersRef.where('uniqueUserId', '==', uniqueUserId).get();
+  const snapshot = await usersRef.where('email', '==', email).get();
 
   if (snapshot.empty) {
-    console.error('No user found with the given unique ID');
+    console.error('No user found with the given email');
     return;
   }
 
@@ -311,7 +311,7 @@ async function handleSubscriptionUpdate(subscription) {
     await userRef.set({
       subscription: updateData
     }, { merge: true });
-    console.log(`Updated subscription for user ${uniqueUserId}: ${JSON.stringify(updateData)}`);
+    console.log(`Updated subscription for user ${email}: ${JSON.stringify(updateData)}`);
   }
 }
 
@@ -322,14 +322,14 @@ async function handleInvoicePayment(invoice) {
   }
 }
 
-async function checkSubscriptionStatus(uniqueUserId) {
-  if (!uniqueUserId) {
-    console.error('No uniqueUserId provided to checkSubscriptionStatus');
-    return { status: 'error', message: 'No user ID provided' };
+async function checkSubscriptionStatus(email) {
+  if (!email) {
+    console.error('No email provided to checkSubscriptionStatus');
+    return { status: 'error', message: 'No email provided' };
   }
 
   const usersRef = db.collection('users');
-  const snapshot = await usersRef.where('uniqueUserId', '==', uniqueUserId).get();
+  const snapshot = await usersRef.where('email', '==', email).get();
 
   if (snapshot.empty) {
     return { status: 'none', message: 'User not found' };
