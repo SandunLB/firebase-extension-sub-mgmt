@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if email is unique
+    function isEmailUnique(email) {
+      return !exists(/databases/$(database)/documents/users/$(email));
+    }
+    
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null 
+                    && request.auth.uid == userId 
+                    && isEmailUnique(request.resource.data.email);
+      allow update: if request.auth != null 
+                    && request.auth.uid == userId 
+                    && (request.resource.data.email == resource.data.email 
+                        || isEmailUnique(request.resource.data.email));
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Add rules for other collections as needed
+  }
+}
