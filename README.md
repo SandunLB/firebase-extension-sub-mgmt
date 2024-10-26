@@ -1,1 +1,1 @@
-test
+This project is a simple subscription management system for browser extensions, built using Firebase for user authentication and Stripe for payments. It enables secure sign-ups and logins with Firebase Authentication, handles payments with Stripe, and stores subscription data in Firebase Firestore, making it easy to check users’ subscription status directly from your extension.
